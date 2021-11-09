@@ -1,0 +1,29 @@
+{
+  "name": "filter-tree",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "dagre": "^0.8.5",
+    "lodash.isequal": "^4.5.0",
+    "nanoid": "^3.1.30",
+    "react": "^17.0.0",
+    "react-dom": "^17.0.0",
+    "react-flow-renderer": "^9.6.11"
+  },
+  "devDependencies": {
+    "@types/dagre": "^0.7.46",
+    "@types/lodash.isequal": "^4.5.5",
+    "@types/react": "^17.0.0",
+    "@types/react-dom": "^17.0.0",
+    "@vitejs/plugin-react": "^1.0.0",
+    "autoprefixer": "^10.4.0",
+    "postcss": "^8.3.11",
+    "tailwindcss": "^2.2.19",
+    "typescript": "^4.3.2",
+    "vite": "^2.6.4"
+  }
+}
