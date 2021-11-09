@@ -133,7 +133,13 @@ export function App() {
             onConnect={handleConnect}
             onElementsRemove={handleElementsRemove}
             elements={elements}
-            onElementClick={(_, element) => setSelected(element as Node)}
+            onSelectionChange={(elements) => {
+              if (!elements || elements.length === 0) {
+                setSelected(undefined);
+              } else {
+                setSelected(elements![0] as Node);
+              }
+            }}
             nodeTypes={{
               idle: CustomNodeComponent,
               successful: CustomNodeComponent,
