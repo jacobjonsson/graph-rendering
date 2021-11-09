@@ -1,3 +1,16 @@
+import { Node as FlowNode, Edge as FlowEdge } from "react-flow-renderer";
+
+export interface NodeData {
+  operator: string;
+  parameter: string;
+  value: string;
+}
+
+export interface EdgeData {}
+
+export type Node = FlowNode<NodeData>;
+export type Edge = FlowEdge<EdgeData>;
+
 /**
  * RawNode represents a node from the backend.
  */
@@ -7,29 +20,10 @@ export interface RawNode {
   parameter: string;
   value: string;
   children: string[];
+  status: "idle" | "successful" | "failed";
 }
 
 export interface DAG {
   root: string;
-  nodes: Map<string, Node>;
-  edges: Edge[];
-}
-
-/**
- * Node represents a node used by the frontend.
- */
-export interface Node {
-  id: string;
-  parameter: string;
-  operator: string;
-  value: string;
-}
-
-/**
- * Edge represents an edge between two nodes
- */
-export interface Edge {
-  id: string;
-  source: string;
-  target: string;
+  elements: Array<Node | Edge>;
 }

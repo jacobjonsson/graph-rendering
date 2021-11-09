@@ -1,0 +1,42 @@
+.react-flow__node-idle,
+.react-flow__node-successful,
+.react-flow__node-failed {
+  @apply border;
+  @apply border-solid;
+  @apply border-gray-300;
+  @apply shadow;
+  @apply rounded;
+  @apply px-3;
+  @apply flex;
+  @apply items-center;
+  @apply bg-white;
+  height: 60px;
+  width: 400px;
+}
+
+.react-flow__node.selected {
+  @apply border-indigo-600;
+  @apply shadow-lg;
+}
+
+.react-flow__node-successful {
+  @apply border-green-600;
+}
+
+.react-flow__node-failed {
+  @apply border-red-600;
+}
+
+.react-flow__edge-path {
+  @apply stroke-2;
+}
+
+.react-flow__edge-successful > .react-flow__edge-path {
+  @apply text-green-600;
+  @apply stroke-current;
+}
+
+.react-flow__edge-failed > .react-flow__edge-path {
+  @apply text-red-600;
+  @apply stroke-current;
+}
