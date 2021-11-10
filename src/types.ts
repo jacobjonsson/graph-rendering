@@ -4,6 +4,7 @@ export interface NodeData {
   operator: string;
   parameter: string;
   value: string;
+  root: boolean;
 }
 
 export interface EdgeData {}

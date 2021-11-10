@@ -1,5 +1,5 @@
-import { ArrowHeadType } from "react-flow-renderer";
-import { RawNode, Edge, Node, DAG, NodeData, EdgeData } from "./types";
+import { isEdge, isNode } from "react-flow-renderer";
+import { RawNode, Edge, Node, DAG, NodeData } from "./types";
 
 /**
  * Deserialize the list of raw nodes into a DAG.
@@ -53,6 +53,7 @@ export function deserialize(
         operator: rawNode.operator,
         parameter: rawNode.parameter,
         value: rawNode.value,
+        root: rawNode.id === rootId,
       },
       rawNode.status
     );
@@ -72,38 +73,51 @@ export function deserialize(
   return { root: rootId, elements: Array.from(elements.values()) };
 }
 
-// export function serialize(dag: DAG): {
-//   root_id: string;
-//   filter: Record<string, RawNode>;
-// } {
-//   const rawNodes: Record<string, RawNode> = {};
+export function isRoot(element: Node | Edge) {
+  if (isNode(element)) {
+    return element.data?.root;
+  } else {
+    return false;
+  }
+}
 
-//   for (const edge of dag.edges) {
-//     const source = dag.nodes.get(edge.source)!;
-//     const target = dag.nodes.get(edge.target)!;
+export function serialize(dag: DAG): {
+  root_id: string;
+  filter: Record<string, RawNode>;
+} {
+  const filter: Record<string, RawNode> = {};
 
-//     if (rawNodes[source.id] === undefined) {
-//       rawNodes[source.id] = {
-//         id: source.id,
-//         operator: source.operator,
-//         parameter: source.parameter,
-//         value: source.value,
-//         children: [],
-//       };
-//     }
+  function traverse(node: Node) {
+    // We have already traversed this node.
+    if (filter[node.id]) {
+      return;
+    }
 
-//     if (rawNodes[target.id] === undefined) {
-//       rawNodes[target.id] = {
-//         id: target.id,
-//         operator: target.operator,
-//         parameter: target.parameter,
-//         value: target.value,
-//         children: [],
-//       };
-//     }
+    filter[node.id] = {
+      id: node.id,
+      operator: node.data!.operator,
+      parameter: node.data!.parameter,
+      value: node.data!.value,
+      children: [],
+      status: "idle", // TODO: Shouldn't be here.
+    };
 
-//     rawNodes[source.id].children.push(edge.target);
-//   }
+    const children = dag.elements
+      .filter((element) => isEdge(element) && element.source === node.id)
+      // Typescript is not smart enough to infer that this is a Edge.
+      // It cannot be a node because it is filtered above using `isEdge(element)`.
+      .map((edge) => (edge as Edge).target);
 
-//   return { root_id: dag.root, filter: rawNodes };
-// }
+    filter[node.id].children = children;
+
+    children.forEach((childId) =>
+      traverse(dag.elements.find((element) => element.id === childId) as Node)
+    );
+  }
+
+  const root = dag.elements.find((element) => element.id === dag.root)!;
+  // An edge can't be a root.
+  traverse(root as Node);
+
+  return { root_id: dag.root, filter };
+}

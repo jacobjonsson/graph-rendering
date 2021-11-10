@@ -1,5 +1,4 @@
-import { filterData } from "./filter_data";
-import { deserialize } from "./dag";
+import { deserialize, isRoot, serialize } from "./dag";
 import dagre from "dagre";
 import ReactFlow, {
   Position,
@@ -10,12 +9,13 @@ import ReactFlow, {
   addEdge,
   Handle,
 } from "react-flow-renderer/nocss";
-import { TrashIcon } from "@heroicons/react/outline";
 import "react-flow-renderer/dist/style.css";
 import "react-flow-renderer/dist/theme-default.css";
 import "./react_flow.css";
 import { Node, Edge, NodeData } from "./types";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { nanoid } from "nanoid";
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -65,12 +65,14 @@ function getLayoutedElements(
 function CustomNodeComponent({ data, ...rest }: { data: NodeData }) {
   return (
     <>
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ borderRadius: 0 }}
-      />
-      <div className="w-full flex justify-between items-center">
+      {!data.root && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          style={{ borderRadius: 0 }}
+        />
+      )}
+      <div className="w-full flex justify-center items-center">
         <div className="flex">
           <span className="block p-2 rounded border border-solid border-gray-300 mr-2 uppercase">
             {data.parameter}
@@ -82,10 +84,6 @@ function CustomNodeComponent({ data, ...rest }: { data: NodeData }) {
             {data.value}
           </span>
         </div>
-
-        <button>
-          <TrashIcon className="h-6 w-6 cursor-pointer" />
-        </button>
       </div>
       <Handle
         type="source"
@@ -113,102 +111,197 @@ export function App() {
   }, []);
 
   function handleElementsRemove(elementsToRemove: Array<Edge | Node>) {
+    // It's not allowed to remove the root node
+    if (elementsToRemove.some((element) => isRoot(element))) {
+      return;
+    }
     setElements((elements) => removeElements(elementsToRemove, elements));
   }
 
   function handleConnect(connection: Edge | Connection) {
-    setElements((elements) => addEdge(connection, elements));
+    setElements((elements) =>
+      addEdge({ ...connection, animated: true }, elements)
+    );
+  }
+
+  function handleSubmit() {
+    const filterData = serialize({ elements, root: elements.find(isRoot)!.id });
+
+    fetch("/api/filters", {
+      method: "POST",
+      body: JSON.stringify(filterData),
+      headers: { "Content-Type": "application/json" },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        setElements(
+          getLayoutedElements(deserialize(data.root_id, data.filter).elements)
+        );
+      });
   }
 
   return (
-    <>
-      <div
-        style={{ height: "600px", width: "100vw" }}
-        className="flex border border-solid border-gray-300 bg-gray-50 mx-auto mb-4"
-      >
-        <ReactFlowProvider>
-          <ReactFlow
-            minZoom={0.1}
-            defaultZoom={0.5}
-            onConnect={handleConnect}
-            onElementsRemove={handleElementsRemove}
-            elements={elements}
-            onSelectionChange={(elements) => {
-              if (!elements || elements.length === 0) {
-                setSelected(undefined);
-              } else {
-                setSelected(elements![0] as Node);
-              }
-            }}
-            nodeTypes={{
-              idle: CustomNodeComponent,
-              successful: CustomNodeComponent,
-              failed: CustomNodeComponent,
-            }}
-          />
-        </ReactFlowProvider>
+    <div className="bg-gray-50 px-4 mt-2">
+      <div className="border border-solid border-gray-300 bg-white mx-auto mb-4">
+        <div
+          style={{ height: "500px", width: "100vw" }}
+          className="mx-auto bg-gray-50 border-b border-solid border-gray-300"
+        >
+          <ReactFlowProvider>
+            <ReactFlow
+              snapToGrid={true}
+              minZoom={0.1}
+              defaultZoom={0.5}
+              onConnect={handleConnect}
+              onElementsRemove={handleElementsRemove}
+              elements={elements}
+              onSelectionChange={(elements) => {
+                if (!elements || elements.length === 0) {
+                  setSelected(undefined);
+                } else {
+                  setSelected(elements![0] as Node);
+                }
+              }}
+              nodeTypes={{
+                idle: CustomNodeComponent,
+                successful: CustomNodeComponent,
+                failed: CustomNodeComponent,
+              }}
+            />
+          </ReactFlowProvider>
+        </div>
+
+        <div className="p-4">
+          <button
+            type="button"
+            className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-4`}
+            onClick={handleSubmit}
+          >
+            Save
+          </button>
+
+          <button
+            type="button"
+            className="inline-flex items-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       <div>
-        <form onClick={(evt) => evt.preventDefault()}>
-          <div className="grid grid-cols-3 gap-4 px-4 mb-4">
-            <div>
-              <label className="mb-1" htmlFor="operator">
-                Parameter
-              </label>
-              <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option>Offered amount</option>
-                <option>Amortize length</option>
-                <option>Applied loan amount</option>
-              </select>
-            </div>
+        <ConditionForm
+          key={selected?.id}
+          initialData={selected?.data}
+          onSubmit={(data) => {
+            if (selected) {
+              setElements((elements) => {
+                return elements.map((element) => {
+                  if (!isNode(element)) {
+                    return element;
+                  }
 
-            <div>
-              <label className="mb-1" htmlFor="operator">
-                Operator
-              </label>
-              <select className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
-                <option>Less than</option>
-                <option>Equal</option>
-                <option>Greater than</option>
-              </select>
-            </div>
+                  if (element.id !== selected.id) {
+                    return element;
+                  }
 
-            <div>
-              <label className="mb-1" htmlFor="operator">
-                Value
-              </label>
-              <input
-                type="text"
-                placeholder="Enter value..."
-                className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-              />
-            </div>
-          </div>
-
-          <div className="px-4">
-            <button
-              disabled={selected === undefined}
-              type="button"
-              className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-4 ${
-                selected == undefined ? "opacity-75" : ""
-              }`}
-            >
-              Add AND
-            </button>
-
-            <button
-              disabled={selected === undefined}
-              type="button"
-              className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${
-                selected == undefined ? "opacity-75" : ""
-              }`}
-            >
-              Add OR
-            </button>
-          </div>
-        </form>
+                  return { ...element, data } as Node;
+                });
+              });
+            } else {
+              setElements((elements) => {
+                return [
+                  ...elements,
+                  {
+                    id: nanoid(),
+                    data,
+                    position: { x: 300, y: 300 },
+                    type: "idle",
+                  } as Node,
+                ];
+              });
+            }
+          }}
+        />
       </div>
-    </>
+    </div>
+  );
+}
+
+interface ConditionData {
+  parameter: string;
+  operator: string;
+  value: string;
+}
+
+interface ConditionFormProps {
+  initialData?: ConditionData;
+  onSubmit: (data: ConditionData) => void;
+}
+
+function ConditionForm(props: ConditionFormProps) {
+  const { handleSubmit, register } = useForm<ConditionData>();
+
+  return (
+    <form
+      onSubmit={handleSubmit(props.onSubmit)}
+      className="bg-white border border-solid border-gray-300 p-4"
+    >
+      <div className="grid grid-cols-3 gap-4 px-4 mb-4">
+        <div>
+          <label className="mb-1" htmlFor="operator">
+            Parameter
+          </label>
+          <select
+            {...register("parameter", { value: props.initialData?.parameter })}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+          >
+            <option value="accommodation.size">Accommodation size</option>
+            <option value="main.applicant.age">Main: Applicant age</option>
+            <option value="main.applicant.income">
+              Main: Applicant income
+            </option>
+            <option value="co.applicant.age">Co: Applicant age</option>
+            <option value="co.applicant.income">Co: Applicant income</option>
+            <option value="applied_loan_amount">Applied loan amount</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1" htmlFor="operator">
+            Operator
+          </label>
+          <select
+            {...register("operator", { value: props.initialData?.operator })}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+          >
+            <option value="<">Less than</option>
+            <option value="=">Equal</option>
+            <option value=">">Greater than</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1" htmlFor="operator">
+            Value
+          </label>
+          <input
+            {...register("value", { value: props.initialData?.value })}
+            type="text"
+            placeholder="Enter value..."
+            className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
+          />
+        </div>
+      </div>
+
+      <div className="px-4">
+        <button
+          type="submit"
+          className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mr-4`}
+        >
+          {props.initialData ? "Update" : "Add"}
+        </button>
+      </div>
+    </form>
   );
 }

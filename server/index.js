@@ -1,5 +1,9 @@
 const express = require("express");
+const { json } = require("body-parser");
+
 const app = express();
+
+app.use(json());
 
 let data = {
   root_id: "1",
@@ -86,7 +90,8 @@ app.get("/api/filters", (req, res) => {
 
 app.post("/api/filters", (req, res) => {
   console.log("POST /api/filters");
-  let data = req.body;
+  console.log(req.body);
+  data = req.body;
   res.status(201).json(data);
 });
 

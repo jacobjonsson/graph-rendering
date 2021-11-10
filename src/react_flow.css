@@ -11,7 +11,7 @@
   @apply items-center;
   @apply bg-white;
   height: 60px;
-  width: 400px;
+  max-width: 400px;
 }
 
 .react-flow__node.selected {
@@ -28,7 +28,7 @@
 }
 
 .react-flow__edge-path {
-  @apply stroke-2;
+  stroke-width: 5;
 }
 
 .react-flow__edge-successful > .react-flow__edge-path {
