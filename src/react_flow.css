@@ -11,7 +11,7 @@
   @apply items-center;
   @apply bg-white;
   height: 60px;
-  max-width: 400px;
+  width: 400px;
 }
 
 .react-flow__node.selected {

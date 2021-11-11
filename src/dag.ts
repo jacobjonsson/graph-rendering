@@ -37,7 +37,7 @@ export function deserialize(
       target,
       id,
       animated: true,
-      type,
+      type: "smoothstep",
     });
   }
 

@@ -21,17 +21,14 @@ const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 
 const nodeWidth = 400;
-const nodeHeight = 200;
+const nodeHeight = 100;
 
 function getLayoutedElements(
   elements: Array<Node | Edge>,
   direction = "TB"
 ): Array<Edge | Node> {
   const isHorizontal = direction === "LR";
-  dagreGraph.setGraph({
-    rankdir: direction,
-    ranker: "tight-tree",
-  });
+  dagreGraph.setGraph({ rankdir: direction, ranker: "longest-path" });
 
   elements.forEach((element) => {
     if (isNode(element)) {
@@ -53,7 +50,7 @@ function getLayoutedElements(
       // to notify react flow about the change. Moreover we are shifting the dagre node position
       // (anchor=center center) to the top left so it matches the react flow node anchor point (top left).
       element.position = {
-        x: nodeWithPosition.x - nodeWidth / 2,
+        x: nodeWithPosition.x - nodeWidth / 2 + Math.random() / 1000,
         y: nodeWithPosition.y - nodeHeight / 2,
       };
     }
@@ -62,7 +59,7 @@ function getLayoutedElements(
   });
 }
 
-function CustomNodeComponent({ data, ...rest }: { data: NodeData }) {
+function CustomNodeComponent({ data }: { data: NodeData }) {
   return (
     <>
       {!data.root && (
@@ -120,7 +117,7 @@ export function App() {
 
   function handleConnect(connection: Edge | Connection) {
     setElements((elements) =>
-      addEdge({ ...connection, animated: true }, elements)
+      addEdge({ ...connection, animated: true, type: "smoothstep" }, elements)
     );
   }
 
@@ -149,11 +146,10 @@ export function App() {
         >
           <ReactFlowProvider>
             <ReactFlow
-              snapToGrid={true}
-              minZoom={0.1}
-              defaultZoom={0.5}
               onConnect={handleConnect}
               onElementsRemove={handleElementsRemove}
+              minZoom={0.1}
+              defaultZoom={0.6}
               elements={elements}
               onSelectionChange={(elements) => {
                 if (!elements || elements.length === 0) {
